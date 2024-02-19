@@ -10,6 +10,6 @@ _VENV_DIR = _PROGRAM_DIR / ".venv"
 
 context = venv.EnvBuilder().ensure_directories(_VENV_DIR)
 subprocess.check_call(
-    [context.env_exe, str(_PROGRAM_DIR / "examples" / "neopixel_ring_16_service.py")]
+    [context.env_exe, str(_PROGRAM_DIR / "examples" / "neopixelring16_service.py")]
     + sys.argv[1:]
 )
