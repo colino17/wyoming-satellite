@@ -29,7 +29,7 @@ from wyoming.wake import Detection
 ###############
 # This section defines the GPIO pin (GPIO 21) that the Neopixel Ring is attached to. It also defines the number of LEDs in the ring (16).
 pixels = neopixel.NeoPixel(board.D21, 16)
-# These are the various colors (RGB) that can be used throughout. Max brightness white would be "255, 255, 255", however this seems exceedingly bright and a>
+# These are the various colors (RGB) that can be used throughout. Max brightness white would be "255, 255, 255", however this seems exceedingly bright and also seems to get quite hot if set for more than a few seconds.
 red = 50, 0, 0
 blue = 0, 20, 50
 green = 10, 50, 0
@@ -45,7 +45,7 @@ _LOGGER = logging.getLogger()
 ## MAIN FUNCTION ##
 ###################
 async def main() -> None:
-# This handles the command line arguments that the program can use. In this case there are two possible arguments, "--uri" which is required and determines >
+# This handles the command line arguments that the program can use. In this case there are two possible arguments, "--uri" which is required and determines the server IP and port, and "--debug" which is an optional flag to increase the logging level.
     parser = argparse.ArgumentParser()
     parser.add_argument("--uri", required=True, help="unix:// or tcp://")
     parser.add_argument("--debug", action="store_true", help="Log DEBUG messages")
