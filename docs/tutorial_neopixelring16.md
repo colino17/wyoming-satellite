@@ -1,52 +1,53 @@
-# Tutorial with 2mic HAT
+# Tutorial with 16-LED Neopixel Ring
 
-Create a voice satellite using a [Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) and a [ReSpeaker 2Mic HAT](https://wiki.keyestudio.com/Ks0314_keyestudio_ReSpeaker_2-Mic_Pi_HAT_V1.0).
+Create a voice satellite using a [Raspberry Pi Zero 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b-plus/) and a [16-LED Neopixel Ring](https://www.adafruit.com/product/1463).
 
-This tutorial should work for almost any Raspberry Pi and USB microphone. Audio enhancements and local wake word detection may require a 64-bit operating system, however.
+This tutorial should work for almost any Raspberry Pi and USB microphone. Audio enhancements and local wake word detection may require a 64-bit operating system.
 
-## Install OS
+## Install Raspberry Pi OS
 
 Follow instructions to [install Raspberry Pi OS](https://www.raspberrypi.com/software/). Under "Choose OS", pick "Raspberry Pi OS (other)" and "Raspberry Pi OS (Legacy, **64-bit**) Lite".
 
-When asking if you'd like to apply customization settings, choose "Edit Settings" and:
+When asked if you'd like to apply customization settings, choose "Edit Settings" and:
 
 * Set a username/password
 * Configure the wireless LAN
 * Under the Services tab, enable SSH and use password authentication
 
-## Install Software
+Once flashed, you can insert your Micro SD card into the Pi and boot into Raspberry Pi OS.
 
-After flashing and booting the satellite, connect to it over SSH using the username/password you configured during flashing.
+## Install System Dependencies
 
-**On the satellite**, make sure system dependencies are installed:
+Install system dependencies:
 
 ```sh
 sudo apt-get update
 sudo apt-get install --no-install-recommends  \
   git \
+  pigpio \
+  python-pigpio \
+  python3-pigpio \
   python3-venv
+  libopenblas-dev
 ```
 
-Clone the `wyoming-satellite` repository:
+## Configure Using Raspi-Config
+
+Enable SPI in Raspi-Config under Interface Options:
+
+```sh
+sudo raspi-config
+```
+
+## Install Wyoming Satellite
+
+Clone the repository:
 
 ```sh
 git clone https://github.com/rhasspy/wyoming-satellite.git
 ```
 
-If you have the ReSpeaker 2Mic or 4Mic HAT, recompile and install the drivers (this will take really long time):
-
-```sh
-cd wyoming-satellite/
-sudo bash etc/install-respeaker-drivers.sh
-```
-
-After install the drivers, you must reboot the satellite:
-
-```sh
-sudo reboot
-```
-
-Once the satellite has rebooted, reconnect over SSH and continue the installation:
+Install the program:
 
 ```sh
 cd wyoming-satellite/
@@ -58,107 +59,65 @@ python3 -m venv .venv
   -r requirements.txt \
   -r requirements_audio_enhancement.txt \
   -r requirements_vad.txt
+  -r requirements_neopixel.txt
 ```
 
-If the installation was successful, you should be able to run:
+Test if installation was successful:
 
 ```sh
 script/run --help
 ```
 
-## Determine Audio Devices
+## Install OpenWakeWord
 
-Picking the correct microphone/speaker devices is critical for the satellite to work. We'll do a test recording and playback in this section.
-
-List your available microphones with:
+Clone the repository:
 
 ```sh
-arecord -L
+cd
+git clone https://github.com/rhasspy/wyoming-satellite.git
 ```
 
-If you have the ReSpeaker 2Mic HAT, you should see:
-
-```
-plughw:CARD=seeed2micvoicec,DEV=0
-    seeed-2mic-voicecard, bcm2835-i2s-wm8960-hifi wm8960-hifi-0
-    Hardware device with all software conversions
-```
-
-For other microphones, prefer ones that start with `plughw:` or just use `default` if you don't know what to use.
-
-Record a 5 second sample from your chosen microphone:
+Install the program:
 
 ```sh
-arecord -D plughw:CARD=seeed2micvoicec,DEV=0 -r 16000 -c 1 -f S16_LE -t wav -d 5 test.wav
+cd wyoming-openwakeword
+script/setup
 ```
 
-Say something while `arecord` is running. If you get errors, try a different microphone device by changing `-D <device>`.
+## Create Wyoming-Satellite Service
 
-List your available speakers with:
-
-```sh
-aplay -L
-```
-
-If you have the ReSpeaker 2Mic HAT, you should see:
-
-```
-plughw:CARD=seeed2micvoicec,DEV=0
-    seeed-2mic-voicecard, bcm2835-i2s-wm8960-hifi wm8960-hifi-0
-    Hardware device with all software conversions
-```
-
-For other speakers, prefer ones that start with `plughw:` or just use `default` if you don't know what to use.
-
-Play back your recorded sample WAV:
-
-```sh
-aplay -D plughw:CARD=seeed2micvoicec,DEV=0 test.wav
-```
-
-You should hear your recorded sample. If there are problems, try a different speaker device by changing `-D <device>`.
-
-Make note of your microphone and speaker devices for the next step.
-
-## Running the Satellite
-
-In the `wyoming-satellite` directory, run:
-
-```sh
-script/run \
-  --debug \
-  --name 'my satellite' \
-  --uri 'tcp://0.0.0.0:10700' \
-  --mic-command 'arecord -D plughw:CARD=seeed2micvoicec,DEV=0 -r 16000 -c 1 -f S16_LE -t raw' \
-  --snd-command 'aplay -D plughw:CARD=seeed2micvoicec,DEV=0 -r 22050 -c 1 -f S16_LE -t raw'
-```
-
-Change the `-D <device>` for `arecord` and `aplay` to match the audio devices from the previous section.
-You can set `--name <NAME>` to whatever you want, but it should stay the same every time you run the satellite.
-
-In Home Assistant, check the "Devices & services" section in Settings. After some time, you should see your satellite show up as "Discovered" (Wyoming Protocol). Click the "Configure" button and "Submit". Choose the area that your satellite is located, and click "Finish".
-
-Your satellite should say "Streaming audio", and you can use the wake word of your preferred pipeline.
-
-## Create Services
-
-You can run wyoming-satellite as a systemd service by first creating a service file:
+Create the service:
 
 ``` sh
 sudo systemctl edit --force --full wyoming-satellite.service
 ```
 
-Paste in the following template, and change both `/home/pi` and the `script/run` arguments to match your set up:
+Using the following template with the appropriate changes to user, execstart, name, [mic and sound devices](https://github.com/rhasspy/wyoming-satellite/blob/master/docs/tutorial_2mic.md#determine-audio-devices), wake word, wav file paths, and working directory:
 
 ```text
 [Unit]
-Description=Wyoming Satellite
+Description=Wyoming Satellite Service
 Wants=network-online.target
 After=network-online.target
+Requires=wyoming-event.service
+Requires=wyoming-openwakeword.service
 
 [Service]
 Type=simple
-ExecStart=/home/pi/wyoming-satellite/script/run --name 'my satellite' --uri 'tcp://0.0.0.0:10700' --mic-command 'arecord -D plughw:CARD=seeed2micvoicec,DEV=0 -r 16000 -c 1 -f S16_LE -t raw' --snd-command 'aplay -D plughw:CARD=seeed2micvoicec,DEV=0 -r 22050 -c 1 -f S16_LE -t raw'
+User=username
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/home/pi/wyoming-satellite/script/run \
+    --name 'Satellite Name' \
+    --uri 'tcp://0.0.0.0:10700' \
+    --mic-command 'arecord -D plughw:CARD=CMTECK,DEV=0 -q -r 16000 -c 1 -f S16_LE -t raw' \
+    --snd-command 'aplay -D plughw:CARD=Device,DEV=0 -q -r 22050 -c 1 -f S16_LE -t raw' \
+    --awake-wav /home/pi/wyoming-satellite/sounds/awake.wav \
+    --done-wav /home/pi/wyoming-satellite/sounds/done.wav \
+    --mic-noise-suppression 2 \
+    --mic-auto-gain 5 \
+    --wake-uri 'tcp://127.0.0.1:10400' \
+    --wake-word-name 'alexa' \
+    --event-uri 'tcp://127.0.0.1:10500'
 WorkingDirectory=/home/pi/wyoming-satellite
 Restart=always
 RestartSec=1
@@ -167,75 +126,28 @@ RestartSec=1
 WantedBy=default.target
 ```
 
-Save the file and exit your editor. Next, enable the service to start at boot and run it:
+## Create Wyoming-OpenWakeWord Service
 
-``` sh
-sudo systemctl enable --now wyoming-satellite.service
-```
-
-(you may need to hit CTRL+C to get back to a shell prompt)
-
-With the service running, you can view logs in real-time with:
-
-``` sh
-journalctl -u wyoming-satellite.service -f
-```
-
-If needed, disable and stop the service with:
-
-``` sh
-sudo systemctl disable --now wyoming-satellite.service
-```
-
-## Audio Enhancements
-
-You can run the satellite with automatic gain control and noise suppression:
-
-``` sh
-script/run \
-  ... \
-  --mic-auto-gain 5 \
-  --mic-noise-suppression 2
-```
-
-Automatic gain control is between 0-31 dbFS, which 31 being the loudest.
-Noise suppression is from 0-4, with 4 being maximum suppression (may cause audio distortion).
-
-You can also use `--mic-volume-multiplier X` to multiply all audio samples by `X`. For example, using 2 for `X` will double the microphone volume (but may cause audio distortion). The corresponding `--snd-volume-multiplier` does the same for audio playback.
-
-## Local Wake Word Detection
-
-Install the necessary system dependencies:
-
-```sh
-sudo apt-get update
-sudo apt-get install --no-install-recommends  \
-  libopenblas-dev
-```
-
-From your home directory, install the openWakeWord Wyoming service:
-
-```sh
-git clone https://github.com/rhasspy/wyoming-openwakeword.git
-cd wyoming-openwakeword
-script/setup
-```
-
-Create a systemd service for it:
+Create the service:
 
 ``` sh
 sudo systemctl edit --force --full wyoming-openwakeword.service
 ```
 
-Paste in the following template, and change both `/home/pi` and the `script/run` arguments to match your set up:
+Using the following template with the appropriate changes to user, execstart, custom model directory, and working directory:
 
 ```text
 [Unit]
-Description=Wyoming openWakeWord
+Description=Wyoming Wakeword Service
 
 [Service]
 Type=simple
-ExecStart=/home/pi/wyoming-openwakeword/script/run --uri 'tcp://127.0.0.1:10400'
+User=username
+ExecStart=/home/pi/wyoming-openwakeword/script/run \
+    --uri 'tcp://127.0.0.1:10400' \
+    --threshold 0.5 \
+    --trigger-level 1 \
+    --custom-model-dir /home/pi/wyoming-openwakeword/custom
 WorkingDirectory=/home/pi/wyoming-openwakeword
 Restart=always
 RestartSec=1
@@ -244,95 +156,26 @@ RestartSec=1
 WantedBy=default.target
 ```
 
-Save the file and exit your editor.
+## Create Wyoming-Event Service
 
-You can now update your satellite service:
+Create the service:
 
 ``` sh
-sudo systemctl edit --force --full wyoming-satellite.service
+sudo systemctl edit --force --full wyoming-event.service
 ```
 
-Update just the parts below:
+Using the following template with the appropriate changes to execstart and working directory (note that I haven't found a workaround for the neopixel library requiring root access for the lights to work properly):
 
 ```text
 [Unit]
-...
-Requires=wyoming-openwakeword.service
-
-[Service]
-...
-ExecStart=/home/pi/wyoming-satellite/script/run ... --wake-uri 'tcp://127.0.0.1:10400' --wake-word-name 'ok_nabu'
-...
-
-[Install]
-...
-```
-
-Reload and restart the satellite service:
-
-``` sh
-sudo systemctl daemon-reload
-sudo systemctl restart wyoming-satellite.service
-```
-
-You should see the wake service get automatically loaded:
-
-``` sh
-sudo systemctl status wyoming-satellite.service wyoming-openwakeword.service
-```
-
-They should all be "active (running)" and green.
-
-Test out your satellite by saying "ok, nabu" and a voice command. Use `journalctl` to check the logs of services for errors:
-
-``` sh
-journalctl -u wyoming-openwakeword.service -f
-```
-
-Make sure to run `sudo systemctl daemon-reload` every time you make changes to the service.
-
-## LED Service
-
-Example event services for the ReSpeaker 2Mic and 4Mic HATs are included in `wyoming-satellite/examples` that will change the LED color depending on the satellite state. The example below is for the 2Mic HAT, using `2mic_service.py`.  If you're using the 4Mic HAT, use `4mic_service.py` instead as the LEDs and GPIO pins are slightly different.
-
-Install it from your home directory:
-
-```sh
-cd wyoming-satellite/examples
-python3 -m venv --system-site-packages .venv
-.venv/bin/pip3 install --upgrade pip
-.venv/bin/pip3 install --upgrade wheel setuptools
-.venv/bin/pip3 install 'wyoming==1.5.2'
-```
-
-The `--system-site-packages` argument is used to access the pre-installed `gpiozero` and `spidev` Python packages. If these are **not already installed** in your system, run:
-
-```sh
-sudo apt-get install python3-spidev python3-gpiozero
-```
-
-Test the service with:
-
-```sh
-.venv/bin/python3 2mic_service.py --help
-```
-
-Create a systemd service for it:
-
-``` sh
-sudo systemctl edit --force --full 2mic_leds.service
-```
-
-Paste in the following template, and change both `/home/pi` and the `script/run` arguments to match your set up:
-
-```text
-[Unit]
-Description=2Mic LEDs
+Description=Wyoming Event Service
 
 [Service]
 Type=simple
-ExecStart=/home/pi/wyoming-satellite/examples/.venv/bin/python3 2mic_service.py --uri 'tcp://127.0.0.1:10500'
-WorkingDirectory=/home/pi/wyoming-satellite/examples
+User=root
+ExecStart=/home/colin/wyoming-satellite/script/run_neopixelring16 \
+    --uri 'tcp://127.0.0.1:10500'
+WorkingDirectory=/home/colin/wyoming-satellite
 Restart=always
 RestartSec=1
 
@@ -340,49 +183,35 @@ RestartSec=1
 WantedBy=default.target
 ```
 
-Save the file and exit your editor.
+## Start and Enable Services
 
-You can now update your satellite service:
-
-``` sh
-sudo systemctl edit --force --full wyoming-satellite.service
-```
-
-Update just the parts below:
-
-```text
-[Unit]
-...
-Requires=2mic_leds.service
-
-[Service]
-...
-ExecStart=/home/pi/wyoming-satellite/script/run ... --event-uri 'tcp://127.0.0.1:10500'
-...
-
-[Install]
-...
-```
-
-Reload and restart the satellite service:
+Start Services:
 
 ``` sh
+sudo systemctl enable --now wyoming-openwakeword.service
+sudo systemctl enable --now wyoming-event.service
+sudo systemctl enable --now wyoming-satellite.service
+```
+
+Start Services:
+``` sh
+sudo systemctl start wyoming-openwakeword.service
+sudo systemctl start wyoming-event.service
+sudo systemctl start wyoming-satellite.service
+```
+
+If any changes are needed to any services they can be done with the following commands:
+
+```sh
+sudo systemctl edit --force --full wyoming-event.service
 sudo systemctl daemon-reload
-sudo systemctl restart wyoming-satellite.service
+sudo systemctl restart wyoming-event.service
 ```
 
-You should see the service get automatically loaded:
+Monitor logs with the following commands:
 
 ``` sh
-sudo systemctl status wyoming-satellite.service 2mic_leds.service
+journalctl -u wyoming-satellite.service -f
+journalctl -u wyoming-openwakeword.service -f
+journalctl -u wyoming-event.service -f
 ```
-
-They should all be "active (running)" and green.
-
-Try a voice command and see if the LEDs change. Use `journalctl` to check the logs of services for errors:
-
-``` sh
-journalctl -u 2mic_leds.service -f
-```
-
-Make sure to run `sudo systemctl daemon-reload` every time you make changes to the service.
