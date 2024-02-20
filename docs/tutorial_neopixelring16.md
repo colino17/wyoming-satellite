@@ -23,12 +23,16 @@ Install system dependencies:
 ```sh
 sudo apt-get update
 sudo apt-get install --no-install-recommends  \
+  python3
+  python3-pip
   git \
   pigpio \
   python-pigpio \
   python3-pigpio \
   python3-venv
   libopenblas-dev
+sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
+sudo python3 -m pip install --force-reinstall adafruit-blinka
 ```
 
 ## Configure Using Raspi-Config
@@ -60,6 +64,8 @@ python3 -m venv .venv
   -r requirements_audio_enhancement.txt \
   -r requirements_vad.txt
   -r requirements_neopixel.txt
+.venv/bin/pip3 install rpi_ws281x adafruit-circuitpython-neopixel
+.venv/bin/pip3 install --force-reinstall adafruit-blinka
 ```
 
 Test if installation was successful:
