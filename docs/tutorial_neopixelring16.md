@@ -2,7 +2,7 @@
 
 Create a voice satellite using a [Raspberry Pi Zero 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b-plus/) and a [16-LED Neopixel Ring](https://www.adafruit.com/product/1463).
 
-This tutorial should work for almost any Raspberry Pi and USB microphone. Audio enhancements and local wake word detection may require a 64-bit operating system.
+Note that this tutorial uses a USB microphone and speaker and uses Pulseaudio rather than ALSA for the sound inputs/outputs, however it will also work with the appropriate ALSA substitutions. See the other tutorials for more standard ALSA setups.
 
 ## Install Raspberry Pi OS
 
@@ -23,6 +23,8 @@ Install system dependencies:
 ```sh
 sudo apt-get update
 sudo apt-get install --no-install-recommends  \
+  pulseaudio
+  pulseaudio-utils
   python3
   python3-pip
   git \
@@ -34,6 +36,67 @@ sudo apt-get install --no-install-recommends  \
 sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 sudo python3 -m pip install --force-reinstall adafruit-blinka
 ```
+
+## Configure Audio
+
+Disable Pulseaudio service:
+
+```sh
+sudo systemctl --global disable pulseaudio.service pulseaudio.socket
+
+```
+
+Disable autospawn:
+
+```sh
+sudo nano /etc/pulse/client.conf
+...
+; autospawn = no
+```
+
+Edit Pulseaudio service:
+
+```sh
+sudo systemctl edit --force --full pulseaudio.service
+```
+
+```text
+[Unit]
+Description=PulseAudio system server
+
+[Service]
+Type=notify
+ExecStart=pulseaudio --daemonize=no --system --realtime --log-target=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable Pulseaudio service and add user to group:
+
+```sh
+systemctl --system enable pulseaudio.service
+systemctl --system start pulseaudio.service
+sudo usermod -a -G pulse-access yourusername
+```
+
+Enable the appropriate output sink using the sink number and active port:
+
+```sh
+pactl list sinks
+pactl set-sink-port 2 "analog-output"
+paplay /usr/share/sounds/alsa/Front_Center.wav
+pactl -- set-sink-volume 2 80%
+```
+
+Modify the Pulseaudio settings to add ducking at the bottom:
+
+```sh
+sudo nano /etc/pulse/system.pa
+...
+load-module module-role-ducking trigger_roles=announce,phone,notification,event ducking_roles=any_role volume=33%
+```
+
 
 ## Configure Using Raspi-Config
 
@@ -98,8 +161,9 @@ Environment=XDG_RUNTIME_DIR=/run/user/1000
 ExecStart=/home/pi/wyoming-satellite/script/run \
     --name 'Satellite Name' \
     --uri 'tcp://0.0.0.0:10700' \
-    --mic-command 'arecord -D plughw:CARD=CMTECK,DEV=0 -q -r 16000 -c 1 -f S16_LE -t raw' \
-    --snd-command 'aplay -D plughw:CARD=UACDemoV10,DEV=0 -q -r 22050 -c 1 -f S16_LE -t raw' \
+    --mic-command 'parecord --property=media.role=phone --rate=16000 --channels=1 --format=s16le --raw --latency-msec 10' \
+    --snd-command 'paplay --property=media.role=announce --rate=44100 --channels=1 --format=s16le --raw --latency-msec 10' \
+    --snd-command-rate 44100 \
     --awake-wav /home/pi/wyoming-satellite/sounds/awake.wav \
     --done-wav /home/pi/wyoming-satellite/sounds/done.wav \
     --mic-noise-suppression 2 \
