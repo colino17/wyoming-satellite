@@ -74,22 +74,6 @@ Test if installation was successful:
 script/run --help
 ```
 
-## Install OpenWakeWord
-
-Clone the repository:
-
-```sh
-cd
-git clone https://github.com/rhasspy/wyoming-satellite.git
-```
-
-Install the program:
-
-```sh
-cd wyoming-openwakeword
-script/setup
-```
-
 ## Create Wyoming-Satellite Service
 
 Create the service:
@@ -98,7 +82,7 @@ Create the service:
 sudo systemctl edit --force --full wyoming-satellite.service
 ```
 
-Using the following template with the appropriate changes to user, execstart, name, [mic and sound devices](https://github.com/rhasspy/wyoming-satellite/blob/master/docs/tutorial_2mic.md#determine-audio-devices), wake word, wav file paths, and working directory:
+Using the following template with the appropriate changes to user, execstart, name, [mic and sound devices](https://github.com/rhasspy/wyoming-satellite/blob/master/docs/tutorial_2mic.md#determine-audio-devices), wav file paths, and working directory:
 
 ```text
 [Unit]
@@ -106,7 +90,6 @@ Description=Wyoming Satellite Service
 Wants=network-online.target
 After=network-online.target
 Requires=wyoming-event.service
-Requires=wyoming-openwakeword.service
 
 [Service]
 Type=simple
@@ -121,40 +104,9 @@ ExecStart=/home/pi/wyoming-satellite/script/run \
     --done-wav /home/pi/wyoming-satellite/sounds/done.wav \
     --mic-noise-suppression 2 \
     --mic-auto-gain 5 \
-    --wake-uri 'tcp://127.0.0.1:10400' \
-    --wake-word-name 'alexa' \
+    --vad \
     --event-uri 'tcp://127.0.0.1:10500'
 WorkingDirectory=/home/pi/wyoming-satellite
-Restart=always
-RestartSec=1
-
-[Install]
-WantedBy=default.target
-```
-
-## Create Wyoming-OpenWakeWord Service
-
-Create the service:
-
-``` sh
-sudo systemctl edit --force --full wyoming-openwakeword.service
-```
-
-Using the following template with the appropriate changes to user, execstart, custom model directory, and working directory:
-
-```text
-[Unit]
-Description=Wyoming Wakeword Service
-
-[Service]
-Type=simple
-User=username
-ExecStart=/home/pi/wyoming-openwakeword/script/run \
-    --uri 'tcp://127.0.0.1:10400' \
-    --threshold 0.5 \
-    --trigger-level 1 \
-    --custom-model-dir /home/pi/wyoming-openwakeword/custom
-WorkingDirectory=/home/pi/wyoming-openwakeword
 Restart=always
 RestartSec=1
 
@@ -194,14 +146,12 @@ WantedBy=default.target
 Start Services:
 
 ``` sh
-sudo systemctl enable --now wyoming-openwakeword.service
 sudo systemctl enable --now wyoming-event.service
 sudo systemctl enable --now wyoming-satellite.service
 ```
 
 Start Services:
 ``` sh
-sudo systemctl start wyoming-openwakeword.service
 sudo systemctl start wyoming-event.service
 sudo systemctl start wyoming-satellite.service
 ```
@@ -218,6 +168,5 @@ Monitor logs with the following commands:
 
 ``` sh
 journalctl -u wyoming-satellite.service -f
-journalctl -u wyoming-openwakeword.service -f
 journalctl -u wyoming-event.service -f
 ```
