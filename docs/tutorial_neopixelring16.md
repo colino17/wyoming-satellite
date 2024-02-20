@@ -116,7 +116,7 @@ ExecStart=/home/pi/wyoming-satellite/script/run \
     --name 'Satellite Name' \
     --uri 'tcp://0.0.0.0:10700' \
     --mic-command 'arecord -D plughw:CARD=CMTECK,DEV=0 -q -r 16000 -c 1 -f S16_LE -t raw' \
-    --snd-command 'aplay -D plughw:CARD=Device,DEV=0 -q -r 22050 -c 1 -f S16_LE -t raw' \
+    --snd-command 'aplay -D plughw:CARD=UACDemoV10,DEV=0 -q -r 22050 -c 1 -f S16_LE -t raw' \
     --awake-wav /home/pi/wyoming-satellite/sounds/awake.wav \
     --done-wav /home/pi/wyoming-satellite/sounds/done.wav \
     --mic-noise-suppression 2 \
