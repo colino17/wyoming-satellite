@@ -23,15 +23,15 @@ Install system dependencies:
 ```sh
 sudo apt-get update
 sudo apt-get install --no-install-recommends  \
-  pulseaudio
-  pulseaudio-utils
-  python3
-  python3-pip
+  pulseaudio \
+  pulseaudio-utils \
+  python3 \
+  python3-pip \
   git \
   pigpio \
   python-pigpio \
   python3-pigpio \
-  python3-venv
+  python3-venv \
   libopenblas-dev
 sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 sudo python3 -m pip install --force-reinstall adafruit-blinka
