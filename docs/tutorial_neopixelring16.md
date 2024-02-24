@@ -126,7 +126,6 @@ python3 -m venv .venv
   -r requirements.txt \
   -r requirements_audio_enhancement.txt \
   -r requirements_vad.txt
-  -r requirements_neopixel.txt
 .venv/bin/pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 .venv/bin/pip3 install --force-reinstall adafruit-blinka
 ```
